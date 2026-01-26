@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mini Fighter Sprite (Walk / Punch / Kick)</title>
+  <style>
+    html,body{height:100%;margin:0;background:#0b0b0f;color:#eaeaf2;font-family:system-ui,Arial}
+    header{padding:10px 14px;border-bottom:1px solid #222;opacity:.9;font-size:14px;line-height:1.35}
+    kbd{background:#1b1b26;border:1px solid #2a2a3a;padding:2px 6px;border-radius:6px;font-size:12px}
+    canvas{display:block;margin:0 auto;background:#12121a}
+    .small{opacity:.7;font-size:12px;margin-top:6px}
+    .err{color:#ffb4b4}
+  </style>
+</head>
+<body>
+<header>
+  P1: <kbd>A</kbd><kbd>D</kbd> jalan, <kbd>F</kbd> pukul, <kbd>G</kbd> tendang
+  <br/>P2: <kbd>←</kbd><kbd>→</kbd> jalan, <kbd>/</kbd> pukul, <kbd>.</kbd> tendang
+  <div class="small">
+    Sprite 128×150, 2 frame. Karakter selalu menghadap lawan.
+    <span class="err" id="err"></span>
+  </div>
+</header>
+
+<canvas id="c" width="960" height="540"></canvas>
+
+<script>
+(() => {
+  const canvas = document.getElementById("c");
+  const ctx = canvas.getContext("2d");
+  const errEl = document.getElementById("err");
+
+  // ====== URL dari kamu (blob) ======
+  const WALK_BLOB = "https://github.com/fauzanbunz/hummingbird/blob/main/Sprite-0003-Sheet.png";
+  const KICK_BLOB = "https://github.com/fauzanbunz/hummingbird/blob/main/kick.png";
+
+  // Konversi blob -> raw.githubusercontent.com (yang benar-benar PNG)
+  function blobToRaw(url) {
+    // https://github.com/<u>/<r>/blob/<branch>/<path>
+    // -> https://raw.githubusercontent.com/<u>/<r>/<branch>/<path>
+    return url
+      .replace("https://github.com/", "https://raw.githubusercontent.com/")
+      .replace("/blob/", "/");
+  }
+
+  const SPRITE_WALK_URL = blobToRaw(WALK_BLOB);
+  const SPRITE_KICK_URL = blobToRaw(KICK_BLOB);
+
+  // ====== SPRITE CONFIG ======
+  const FRAME_W = 128;
+  const FRAME_H = 150;
+  const FRAMES = 2;
+
+  function loadImage(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error("Gagal load image: " + url));
+      img.src = url;
+    });
+  }
+
+  const keys = new Set();
+  addEventListener("keydown", (e) => {
+    keys.add(e.key);
+    if (["ArrowLeft","ArrowRight"].includes(e.key)) e.preventDefault();
+  });
+  addEventListener("keyup", (e) => keys.delete(e.key));
+
+  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+  const overlap = (a,b)=>a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y;
+
+  const world = { w: canvas.width, h: canvas.height, groundY: canvas.height - 90 };
+  const STATE = { IDLE:"idle", WALK:"walk", ATTACK:"attack" };
+
+  function fighter(id, x) {
+    return {
+      id, x, y: world.groundY,
+      vx: 0,
+      facing: 1,
+      state: STATE.IDLE,
+      attack: null,
+      atkT: 0,
+      hitFreeze: 0,
+      animT: 0,
+      animFrame: 0
+    };
+  }
+
+  // frame data sederhana
+  const attacks = {
+    punch: { startup: 0.10, active: 0.08, recovery:
