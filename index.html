@@ -1,3 +1,135 @@
+// --- LOAD GAMBAR ---
+    // Kita buat object gambar di luar class supaya diload sekali saja
+    const playerSprite = new Image();
+    // Menggunakan link RAW agar bisa dibaca langsung oleh browser
+    playerSprite.src = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/Sprite-0003-Sheet.png';
+
+    // --- CLASS FIGHTER UPDATED ---
+    class Fighter {
+        constructor({position, velocity, color, imageSrc, framesMax = 1, scale = 1, isEnemy = false}) {
+            this.position = position;
+            this.velocity = velocity;
+            this.width = 50;  // Lebar Hitbox (Kotak tabrak)
+            this.height = 150; // Tinggi Hitbox
+            this.color = color;
+            this.isEnemy = isEnemy;
+            this.lastKey;
+            
+            // Konfigurasi Gambar
+            this.image = playerSprite; // Pakai gambar yang sudah diload
+            this.scale = scale;
+            this.framesMax = framesMax; // Jumlah total frame di gambar (misal 6 frame jalan)
+            this.framesCurrent = 0; // Frame yang sedang aktif (0, 1, 2...)
+            this.framesElapsed = 0; // Counter waktu
+            this.framesHold = 10;   // Kecepatan animasi (makin besar makin lambat)
+            
+            // Status Combat
+            this.health = 100;
+            this.isAttacking = false;
+            this.attackType = '';
+            
+            this.attackBox = {
+                position: { x: this.position.x, y: this.position.y },
+                offset: { x: 0, y: 0 },
+                width: 100,
+                height: 50
+            };
+            
+            this.facing = isEnemy ? -1 : 1; 
+        }
+
+        draw() {
+            // --- LOGIKA ANIMASI & GAMBAR ---
+            
+            ctx.save(); // Simpan settingan canvas normal
+
+            // 1. Teknik Flip (Membalik Gambar jika hadap kiri)
+            if (this.facing === -1) {
+                // Pindahkan titik pusat canvas ke tengah karakter
+                ctx.translate(this.position.x + this.width / 2, this.position.y + this.height / 2);
+                ctx.scale(-1, 1); // Balik horizontal
+                // Geser balik titik gambar agar pas di tengah
+                ctx.translate(-(this.position.x + this.width / 2), -(this.position.y + this.height / 2));
+            }
+
+            // 2. Hitung Koordinat Potong (Crop) dari Sprite Sheet
+            // frameX menghitung: Frame ke-0 = 0px, Frame ke-1 = 128px, dst.
+            // Kita asumsikan lebar per frame adalah lebar gambar total dibagi jumlah frame
+            const frameWidth = this.image.width / this.framesMax; 
+            
+            const cropX = this.framesCurrent * frameWidth;
+
+            // 3. Gambar Sprite
+            // Kita gambar agak lebih lebar dari hitbox biar proporsional
+            // Offset X & Y disesuaikan agar gambar pas di tengah hitbox merah/kuning
+            const drawX = this.position.x - 35; // Geser gambar ke kiri dikit biar tengah
+            const drawY = this.position.y;      
+
+            ctx.drawImage(
+                this.image,
+                cropX, 0, // Posisi Crop di Sprite Sheet (X, Y)
+                frameWidth, this.image.height, // Lebar & Tinggi potongan
+                drawX, drawY, // Posisi di Layar
+                frameWidth * this.scale, this.image.height * this.scale // Ukuran di Layar
+            );
+
+            ctx.restore(); // Kembalikan settingan canvas normal
+
+            // --- DEBUG HITBOX (Opsional: Hapus kalau mau bersih) ---
+            // ctx.globalAlpha = 0.3;
+            // ctx.fillStyle = this.color;
+            // ctx.fillRect(this.position.x, this.position.y, this.width, this.height);
+            // ctx.globalAlpha = 1.0;
+            
+            // Gambar Attack Box (Tetap kotak transparan)
+            if (this.isAttacking) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                let attackX = this.facing === 1 
+                    ? this.position.x + this.width 
+                    : this.position.x - this.attackBox.width;
+                ctx.fillRect(attackX, this.attackBox.position.y, this.attackBox.width, this.attackBox.height);
+            }
+        }
+
+        animateFrames() {
+            this.framesElapsed++;
+
+            if (this.framesElapsed % this.framesHold === 0) {
+                if (this.framesCurrent < this.framesMax - 1) {
+                    this.framesCurrent++;
+                } else {
+                    this.framesCurrent = 0; // Loop kembali ke frame 0
+                }
+            }
+        }
+
+        update() {
+            this.draw();
+            
+            // Hanya jalankan animasi jalan kalau bergerak
+            if (this.velocity.x !== 0) {
+                this.animateFrames();
+            } else {
+                this.framesCurrent = 0; // Reset ke posisi berdiri kalau diam
+            }
+            
+            this.attackBox.position.y = this.position.y + 20;
+            this.position.x += this.velocity.x;
+            this.position.y += this.velocity.y;
+
+            if (this.position.y + this.height + this.velocity.y >= GROUND_Y) {
+                this.velocity.y = 0;
+                this.position.y = GROUND_Y - this.height;
+            } else {
+                this.velocity.y += GRAVITY;
+            }
+
+            if (this.position.x < 0) this.position.x = 0;
+            if (this.position.x + this.width > canvas.width) this.position.x = canvas.width - this.width;
+        }
+// ... sisa method attack() sama seperti sebelumnya
+
+
 // --- INISIALISASI ---
     const player = new Fighter({
         position: { x: 100, y: 0 },
@@ -14,3 +146,4 @@
         color: 'red',
         isEnemy: true
     });
+
