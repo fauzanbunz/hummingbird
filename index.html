@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HELLIONS - Mobile Controls</title>
+    <title>HELLIONS - Jump Fix</title>
     <style>
         /* --- IMPORT CUSTOM FONT --- */
         @font-face {
@@ -20,7 +20,7 @@
             height: 100vh;
             overflow: hidden;
             font-family: 'Courier New', Courier, monospace;
-            touch-action: none; /* Mencegah zoom/scroll di HP */
+            touch-action: none; 
         }
 
         #game-container {
@@ -122,16 +122,15 @@
             padding: 5px 15px;
             border-radius: 20px;
             white-space: nowrap;
-            /* Sembunyikan hint keyboard di layar kecil */
             @media (max-width: 768px) {
                 display: none;
             }
         }
 
-        /* --- TOMBOL MUTE (KIRI ATAS - DIGESER BIAR GAK KETUTUP KONTROL) --- */
+        /* --- TOMBOL MUTE --- */
         #mute-btn {
             position: absolute;
-            top: 80px; /* Pindah ke atas */
+            top: 80px; 
             left: 20px; 
             width: 40px;
             height: 40px;
@@ -161,7 +160,7 @@
             left: 0;
             width: 100%;
             height: 150px;
-            pointer-events: none; /* Container tembus klik */
+            pointer-events: none; 
             display: flex;
             justify-content: space-between;
             padding: 0 40px;
@@ -172,7 +171,7 @@
         .control-group {
             display: flex;
             gap: 20px;
-            pointer-events: auto; /* Tombol bisa diklik */
+            pointer-events: auto; 
             align-items: center;
         }
 
@@ -199,7 +198,6 @@
             transform: scale(0.95);
         }
 
-        /* Tombol Pukul/Tendang lebih besar dikit */
         .action-btn {
             width: 80px;
             height: 80px;
@@ -209,6 +207,7 @@
 
         .punch-btn { background: rgba(255, 50, 50, 0.2); }
         .kick-btn { background: rgba(50, 50, 255, 0.2); }
+        .jump-btn { background: rgba(50, 255, 50, 0.2); font-size: 18px;} 
 
     </style>
 </head>
@@ -222,21 +221,19 @@
                 <div class="bar-border"><div id="enemy-health" class="health"></div></div>
             </div>
             
-            <div id="controls-hint">Move: A/D | Punch: N | Kick: M</div>
+            <div id="controls-hint">Move: A/D | Jump: Space | Punch: N | Kick: M</div>
             
-            <!-- Tombol Mute (Pindah ke kiri atas sedikit) -->
             <div id="mute-btn" title="Mute/Unmute">🔊</div>
 
             <!-- MOBILE CONTROLS -->
             <div id="mobile-controls">
-                <!-- D-PAD (Kiri) -->
                 <div class="control-group">
                     <div class="touch-btn" id="btn-left">⬅</div>
                     <div class="touch-btn" id="btn-right">➡</div>
                 </div>
                 
-                <!-- ACTIONS (Kanan) -->
                 <div class="control-group">
+                    <div class="touch-btn action-btn jump-btn" id="btn-jump">JUMP</div>
                     <div class="touch-btn action-btn punch-btn" id="btn-punch">N</div>
                     <div class="touch-btn action-btn kick-btn" id="btn-kick">M</div>
                 </div>
@@ -249,26 +246,21 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Setup Canvas Responsif
     function resizeCanvas() {
-        // Aspek rasio 16:9
         const targetRatio = 16 / 9;
         const windowRatio = window.innerWidth / window.innerHeight;
         
         if (windowRatio > targetRatio) {
-            // Layar lebih lebar dari game -> Tinggi mentok
             canvas.style.height = window.innerHeight + 'px';
             canvas.style.width = (window.innerHeight * targetRatio) + 'px';
         } else {
-            // Layar lebih tinggi dari game -> Lebar mentok
             canvas.style.width = window.innerWidth + 'px';
             canvas.style.height = (window.innerWidth / targetRatio) + 'px';
         }
     }
     
-    // Panggil resize saat load dan resize window
     window.addEventListener('resize', resizeCanvas);
-    resizeCanvas(); // Init
+    resizeCanvas(); 
 
     canvas.width = 1024;
     canvas.height = 576;
@@ -287,6 +279,7 @@
     const HIT_SPRITE_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/hit.png';
     const DEATH_SPRITE_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/death.png';
     const WIN_SPRITE_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/win.png';
+    const JUMP_SPRITE_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/jump.png';
     const CROW_SPRITE_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/crow.png';
     
     // --- AUDIO URLS ---
@@ -500,24 +493,26 @@
             this.switchSprite('hit');
         }
 
+        jump() {
+            if (this.position.y + this.height >= canvas.height - GROUND_HEIGHT && !this.dead && !this.isAttacking && this.image !== this.sprites.hit.image) {
+                this.velocity.y = -20; 
+            }
+        }
+
         switchSprite(sprite) {
-            // Priority 0: DEAD
             if (this.image === this.sprites.death.image) {
                 if (this.framesCurrent === this.sprites.death.framesMax - 1) 
                     this.dead = true;
                 return;
             }
 
-            // Priority 0.5: WIN
             if (this.image === this.sprites.win.image) return;
 
-            // Priority 1: HIT Animation
             if (
                 this.image === this.sprites.hit.image &&
                 this.framesCurrent < this.sprites.hit.framesMax - 1
             ) return;
 
-            // Priority 2: ATTACK Animation
             if (sprite !== 'hit' && sprite !== 'death' && sprite !== 'win') {
                 if (
                     this.image === this.sprites.kick.image && 
@@ -530,12 +525,18 @@
                 ) return;
             }
 
-            // Switch Logic
             if (this.image !== this.sprites[sprite].image) {
                 this.image = this.sprites[sprite].image;
                 this.framesMax = this.sprites[sprite].framesMax;
                 this.framesHold = this.sprites[sprite].framesHold || 10;
                 this.currentOffset = this.sprites[sprite].offset || { x: 0, y: 0 };
+                
+                if (this.sprites[sprite].frameDims) {
+                    this.frameDims = this.sprites[sprite].frameDims;
+                } else {
+                    this.frameDims = { width: 128, height: 150 }; 
+                }
+
                 this.framesCurrent = 0; 
             }
         }
@@ -558,11 +559,18 @@
             const drawX = this.position.x - (scaledWidth - this.width) / 2 + this.currentOffset.x;
             const drawY = (this.position.y - (scaledHeight - this.height)) + this.currentOffset.y;
 
-            // Shadow
+            // Shadow Logic
             ctx.fillStyle = 'rgba(0,0,0,0.3)';
             ctx.beginPath();
-            ctx.ellipse(this.position.x + this.width/2, this.position.y + this.height, 40, 10, 0, 0, Math.PI * 2);
-            ctx.fill();
+            const heightFromGround = (canvas.height - GROUND_HEIGHT) - (this.position.y + this.height);
+            let shadowSize = 40 - (Math.max(0, heightFromGround) / 5);
+            shadowSize = Math.max(10, shadowSize);
+
+            // Hanya gambar bayangan kalau tidak mati
+            if (!this.dead) {
+                ctx.ellipse(this.position.x + this.width/2, canvas.height - GROUND_HEIGHT + this.height, shadowSize, 10, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
 
             ctx.drawImage(
                 this.image,
@@ -590,7 +598,6 @@
         update() {
             this.draw();
             
-            // --- LOGIKA ANIMASI DEATH (NO LOOP) ---
             if (this.image === this.sprites.death.image) {
                 this.framesElapsed++;
                 if (this.framesElapsed % this.framesHold === 0) {
@@ -601,7 +608,6 @@
                 return; 
             }
 
-            // --- LOGIKA ANIMASI WIN (NO LOOP) ---
             if (this.image === this.sprites.win.image) {
                 this.framesElapsed++;
                 if (this.framesElapsed % this.framesHold === 0) {
@@ -609,7 +615,7 @@
                         this.framesCurrent++;
                     }
                 }
-                return; // Berhenti update physics agar pose kemenangan statis
+                return; 
             }
 
             this.framesElapsed++;
@@ -682,6 +688,7 @@
     const Y_OFFSET_NORMAL = 25; 
     const Y_OFFSET_DEATH = 80;  
     const Y_OFFSET_PUNCH = 55; 
+    const Y_OFFSET_JUMP = 0; 
     
     const gameBackground = new Background({
         imageSrc: BACKGROUND_URL,
@@ -703,7 +710,8 @@
             punch: { imageSrc: PUNCH_SPRITE_URL, framesMax: 2, offset: {x:0, y: Y_OFFSET_PUNCH} },
             hit: { imageSrc: HIT_SPRITE_URL, framesMax: 1, offset: {x:0, y: Y_OFFSET_NORMAL} },
             death: { imageSrc: DEATH_SPRITE_URL, framesMax: 5, offset: {x:0, y: Y_OFFSET_DEATH} },
-            win: { imageSrc: WIN_SPRITE_URL, framesMax: 4, framesHold: 20, offset: {x:0, y: Y_OFFSET_NORMAL} }
+            win: { imageSrc: WIN_SPRITE_URL, framesMax: 4, framesHold: 20, offset: {x:0, y: Y_OFFSET_NORMAL} },
+            jump: { imageSrc: JUMP_SPRITE_URL, framesMax: 5, frameDims: {width: 128, height: 128}, offset: {x:0, y: Y_OFFSET_JUMP} }
         }
     });
 
@@ -720,7 +728,8 @@
              punch: { imageSrc: PUNCH_SPRITE_URL, framesMax: 2, offset: {x:0, y: Y_OFFSET_PUNCH} },
              hit: { imageSrc: HIT_SPRITE_URL, framesMax: 1, offset: {x:0, y: Y_OFFSET_NORMAL} },
              death: { imageSrc: DEATH_SPRITE_URL, framesMax: 5, offset: {x:0, y: Y_OFFSET_DEATH} },
-             win: { imageSrc: WIN_SPRITE_URL, framesMax: 4, framesHold: 20, offset: {x:0, y: Y_OFFSET_NORMAL} }
+             win: { imageSrc: WIN_SPRITE_URL, framesMax: 4, framesHold: 20, offset: {x:0, y: Y_OFFSET_NORMAL} },
+             jump: { imageSrc: JUMP_SPRITE_URL, framesMax: 5, frameDims: {width: 128, height: 128}, offset: {x:0, y: Y_OFFSET_JUMP} }
         }
     });
 
@@ -779,18 +788,23 @@
 
         const dx = player.position.x - enemy.position.x;
         const distance = Math.abs(dx);
-        enemy.velocity.x = 0;
         
+        const moveSpeed = 4.5; 
+
+        if (distance < 100 && Math.random() < 0.01) {
+            enemy.jump();
+        }
+
         if (distance > 80) {
-            enemy.velocity.x = dx > 0 ? 3 : -3;
+            enemy.velocity.x = dx > 0 ? moveSpeed : -moveSpeed;
             enemy.switchSprite('run');
         } else {
             enemy.velocity.x = 0;
             const rand = Math.random();
-            if (rand < 0.02) {
+            if (rand < 0.08) { 
                 enemy.attack('punch');
-            } else if (rand < 0.04) {
-                enemy.attack('kick');
+            } else if (rand < 0.15) {
+                enemy.attack('kick'); 
             } else {
                 enemy.switchSprite('idle');
             }
@@ -846,8 +860,51 @@
         player.update();
         enemy.update();
 
+        const isPlayerAirborne = player.position.y + player.height < canvas.height - GROUND_HEIGHT - 10;
+        const isEnemyAirborne = enemy.position.y + enemy.height < canvas.height - GROUND_HEIGHT - 10;
+
+        if (!isPlayerAirborne && !isEnemyAirborne) {
+            if (
+                player.position.x + player.width >= enemy.position.x &&
+                player.position.x <= enemy.position.x + enemy.width &&
+                player.position.y + player.height >= enemy.position.y &&
+                player.position.y <= enemy.position.y + enemy.height
+            ) {
+                 const playerCenter = player.position.x + player.width / 2;
+                 const enemyCenter = enemy.position.x + enemy.width / 2;
+
+                 if (playerCenter < enemyCenter) {
+                     player.position.x -= 3;
+                     enemy.position.x += 3;
+                 } else {
+                     player.position.x += 3;
+                     enemy.position.x -= 3;
+                 }
+            }
+        }
+
+        // --- ANIMASI JUMP DIPERBAIKI ---
+        // Kita tangani sprite jump di sini untuk memastikannya meng-override idle/run
+        // TAPI tidak meng-override Attack/Death/Hit (yang sudah dihandle di switchSprite)
+        
+        // Logika Player
+        if (player.velocity.x === 0 && player.velocity.y === 0) {
+             if (player.health > 0 && player.image !== player.sprites.hit.image && !player.isAttacking) {
+                 player.switchSprite('idle');
+             }
+        } else if (player.velocity.y !== 0) {
+             player.switchSprite('jump');
+        } else if (player.velocity.x !== 0) {
+             // Pastikan tidak menimpa animasi serang
+             if (!player.isAttacking) player.switchSprite('run');
+        }
+
+        // Logika Enemy (AI sudah mengatur ini via aiLogic, tapi untuk jump kita paksa di sini)
+        if (enemy.velocity.y !== 0) {
+            enemy.switchSprite('jump');
+        }
+
         if (gameState === 'PLAY') {
-            // KO Logic
             if (enemy.health <= 0 || player.health <= 0) {
                 if (!koSoundPlayed) {
                     playSound(audioAssets.ko);
@@ -895,42 +952,34 @@
 
         aiLogic();
 
+        // Input Handler (Velocity) sudah dipisah dari Animation Handler di atas
         player.velocity.x = 0;
-        // Tambahkan check !player.isAttacking agar tidak bisa jalan saat menyerang
         if (player.health > 0 && player.image !== player.sprites.hit.image && gameState === 'PLAY' && !player.isAttacking) {
             if (keys.a.pressed && player.lastKey === 'a') {
                 player.velocity.x = -5;
-                player.switchSprite('run');
             } else if (keys.d.pressed && player.lastKey === 'd') {
                 player.velocity.x = 5;
-                player.switchSprite('run');
-            } else {
-                player.switchSprite('idle');
             }
         }
 
         if (player.health > 0 && enemy.health > 0 && gameState === 'PLAY') {
-            // Player Hit Enemy
             if (rectangularCollision({ rectangle1: player, rectangle2: enemy }) && player.isAttacking && player.framesCurrent >= 1) { 
                 player.isAttacking = false;
                 let damage = player.attackType === 'kick' ? 5 : 2;
                 enemy.health -= damage;
                 enemy.takeHit(); 
                 
-                // Play HIT Sound
                 if (player.attackType === 'kick') playSound(audioAssets.hitKick);
                 else playSound(audioAssets.hitPunch);
 
                 document.querySelector('#enemy-health').style.width = Math.max(0, enemy.health) + '%';
             }
 
-            // Enemy Hit Player
             if (rectangularCollision({ rectangle1: enemy, rectangle2: player }) && enemy.isAttacking && enemy.framesCurrent >= 1) {
                 enemy.isAttacking = false;
                 player.health -= 5;
                 player.takeHit(); 
                 
-                // Play HIT Sound
                 if (enemy.attackType === 'kick') playSound(audioAssets.hitKick);
                 else playSound(audioAssets.hitPunch);
 
@@ -941,18 +990,15 @@
 
     animate();
 
-    // Event Listeners for Mobile Controls
     const btnLeft = document.getElementById('btn-left');
     const btnRight = document.getElementById('btn-right');
     const btnPunch = document.getElementById('btn-punch');
     const btnKick = document.getElementById('btn-kick');
+    const btnJump = document.getElementById('btn-jump');
 
-    // Function to handle touch start
     function handleTouchStart(action) {
         if (gameState !== 'PLAY') {
-             // Allow restart on touch if game over
              if(gameState === 'GAMEOVER' || gameState === 'MENU') {
-                 // Trigger restart logic (simulate Space)
                  const event = new KeyboardEvent('keydown', { 'code': 'Space' });
                  window.dispatchEvent(event);
                  return;
@@ -973,6 +1019,10 @@
                 player.lastKey = 'd';
                 btnRight.classList.add('active');
                 break;
+            case 'jump':
+                player.jump();
+                btnJump.classList.add('active');
+                break;
             case 'punch':
                 player.attack('punch');
                 btnPunch.classList.add('active');
@@ -984,7 +1034,6 @@
         }
     }
 
-    // Function to handle touch end
     function handleTouchEnd(action) {
         switch (action) {
             case 'left':
@@ -995,6 +1044,9 @@
                 keys.d.pressed = false;
                 btnRight.classList.remove('active');
                 break;
+            case 'jump':
+                btnJump.classList.remove('active');
+                break;
             case 'punch':
                 btnPunch.classList.remove('active');
                 break;
@@ -1004,12 +1056,14 @@
         }
     }
 
-    // Assign listeners
     btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouchStart('left'); });
     btnLeft.addEventListener('touchend', (e) => { e.preventDefault(); handleTouchEnd('left'); });
     
     btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouchStart('right'); });
     btnRight.addEventListener('touchend', (e) => { e.preventDefault(); handleTouchEnd('right'); });
+
+    btnJump.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouchStart('jump'); });
+    btnJump.addEventListener('touchend', (e) => { e.preventDefault(); handleTouchEnd('jump'); });
 
     btnPunch.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouchStart('punch'); });
     btnPunch.addEventListener('touchend', (e) => { e.preventDefault(); handleTouchEnd('punch'); });
@@ -1062,6 +1116,9 @@
                 case 'a':
                     keys.a.pressed = true;
                     player.lastKey = 'a';
+                    break;
+                case ' ': 
+                    player.jump();
                     break;
                 case 'n':
                     player.attack('punch');
