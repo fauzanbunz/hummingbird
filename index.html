@@ -2,8 +2,8 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HELLIONS - Final Polish</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HELLIONS - Mobile Controls</title>
     <style>
         /* --- IMPORT CUSTOM FONT --- */
         @font-face {
@@ -20,6 +20,7 @@
             height: 100vh;
             overflow: hidden;
             font-family: 'Courier New', Courier, monospace;
+            touch-action: none; /* Mencegah zoom/scroll di HP */
         }
 
         #game-container {
@@ -121,19 +122,23 @@
             padding: 5px 15px;
             border-radius: 20px;
             white-space: nowrap;
+            /* Sembunyikan hint keyboard di layar kecil */
+            @media (max-width: 768px) {
+                display: none;
+            }
         }
 
-        /* --- TOMBOL MUTE (KIRI BAWAH) --- */
+        /* --- TOMBOL MUTE (KIRI ATAS - DIGESER BIAR GAK KETUTUP KONTROL) --- */
         #mute-btn {
             position: absolute;
-            bottom: 20px;
+            top: 80px; /* Pindah ke atas */
             left: 20px; 
-            width: 50px;
-            height: 50px;
-            background-color: rgba(0, 0, 0, 0.7);
+            width: 40px;
+            height: 40px;
+            background-color: rgba(0, 0, 0, 0.5);
             border: 2px solid white;
             border-radius: 50%;
-            font-size: 24px;
+            font-size: 20px;
             cursor: pointer;
             pointer-events: auto; 
             color: white;
@@ -145,14 +150,66 @@
             z-index: 100;
         }
         
-        #mute-btn:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-            transform: scale(1.1);
-        }
-
         #mute-btn:active {
             transform: scale(0.9);
         }
+
+        /* --- MOBILE CONTROLS --- */
+        #mobile-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 0;
+            width: 100%;
+            height: 150px;
+            pointer-events: none; /* Container tembus klik */
+            display: flex;
+            justify-content: space-between;
+            padding: 0 40px;
+            box-sizing: border-box;
+            z-index: 50;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 20px;
+            pointer-events: auto; /* Tombol bisa diklik */
+            align-items: center;
+        }
+
+        .touch-btn {
+            width: 70px;
+            height: 70px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            color: white;
+            font-size: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+            touch-action: none;
+            backdrop-filter: blur(2px);
+            transition: background 0.1s;
+        }
+
+        .touch-btn:active, .touch-btn.active {
+            background: rgba(255, 200, 0, 0.5);
+            border-color: yellow;
+            transform: scale(0.95);
+        }
+
+        /* Tombol Pukul/Tendang lebih besar dikit */
+        .action-btn {
+            width: 80px;
+            height: 80px;
+            font-weight: bold;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .punch-btn { background: rgba(255, 50, 50, 0.2); }
+        .kick-btn { background: rgba(50, 50, 255, 0.2); }
+
     </style>
 </head>
 <body>
@@ -165,10 +222,25 @@
                 <div class="bar-border"><div id="enemy-health" class="health"></div></div>
             </div>
             
-            <div id="controls-hint">Move: Arrows | Punch: Z | Kick: X</div>
+            <div id="controls-hint">Move: A/D | Punch: N | Kick: M</div>
             
-            <!-- Tombol Mute di Kiri Bawah -->
+            <!-- Tombol Mute (Pindah ke kiri atas sedikit) -->
             <div id="mute-btn" title="Mute/Unmute">🔊</div>
+
+            <!-- MOBILE CONTROLS -->
+            <div id="mobile-controls">
+                <!-- D-PAD (Kiri) -->
+                <div class="control-group">
+                    <div class="touch-btn" id="btn-left">⬅</div>
+                    <div class="touch-btn" id="btn-right">➡</div>
+                </div>
+                
+                <!-- ACTIONS (Kanan) -->
+                <div class="control-group">
+                    <div class="touch-btn action-btn punch-btn" id="btn-punch">N</div>
+                    <div class="touch-btn action-btn kick-btn" id="btn-kick">M</div>
+                </div>
+            </div>
         </div>
         <canvas id="gameCanvas"></canvas>
     </div>
@@ -176,6 +248,27 @@
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+
+    // Setup Canvas Responsif
+    function resizeCanvas() {
+        // Aspek rasio 16:9
+        const targetRatio = 16 / 9;
+        const windowRatio = window.innerWidth / window.innerHeight;
+        
+        if (windowRatio > targetRatio) {
+            // Layar lebih lebar dari game -> Tinggi mentok
+            canvas.style.height = window.innerHeight + 'px';
+            canvas.style.width = (window.innerHeight * targetRatio) + 'px';
+        } else {
+            // Layar lebih tinggi dari game -> Lebar mentok
+            canvas.style.width = window.innerWidth + 'px';
+            canvas.style.height = (window.innerWidth / targetRatio) + 'px';
+        }
+    }
+    
+    // Panggil resize saat load dan resize window
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas(); // Init
 
     canvas.width = 1024;
     canvas.height = 576;
@@ -187,23 +280,49 @@
     const BACKGROUND_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/bg%20final.png';
     const BACKGROUND_FRAMES = 2; 
     
+    // Sprites
     const IDLE_SPRITE_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/Sprite-0003-Sheet.png';
     const KICK_SPRITE_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/kick.png';
     const PUNCH_SPRITE_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/punch.png';
     const HIT_SPRITE_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/hit.png';
     const DEATH_SPRITE_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/death.png';
     const WIN_SPRITE_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/win.png';
-    
     const CROW_SPRITE_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/crow.png';
+    
+    // --- AUDIO URLS ---
     const MUSIC_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/Neon%20Back%20Alley%20Run.mp3';
+    const VOICE_PLAYER_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/man%20voice.wav';
+    const VOICE_ENEMY_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/man%20voice%202.wav';
+    const SWING_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/no%20hit.mp3';
+    const HIT_PUNCH_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/punch%20s.mp3';
+    const HIT_KICK_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/kick%20s.mp3';
+    const KO_URL = 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/ko.wav';
 
     // Load Assets
     const backgroundImage = new Image();
     backgroundImage.src = BACKGROUND_URL;
 
+    // Load Audio Objects
     const bgm = new Audio(MUSIC_URL);
     bgm.loop = true; 
     bgm.volume = 0.5;
+
+    const audioAssets = {
+        playerVoice: new Audio(VOICE_PLAYER_URL),
+        enemyVoice: new Audio(VOICE_ENEMY_URL),
+        swing: new Audio(SWING_URL),
+        hitPunch: new Audio(HIT_PUNCH_URL),
+        hitKick: new Audio(HIT_KICK_URL),
+        ko: new Audio(KO_URL)
+    };
+
+    function playSound(audio) {
+        if (!bgm.muted) {
+            const clone = audio.cloneNode(); 
+            clone.volume = 0.7; 
+            clone.play().catch(e => {}); 
+        }
+    }
 
     // --- LOGIKA MUTE BUTTON ---
     const muteBtn = document.getElementById('mute-btn');
@@ -211,16 +330,13 @@
 
     muteBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        
         bgm.muted = !bgm.muted;
-        
         if (bgm.muted) {
             muteBtn.innerHTML = '🔇';
             muteBtn.style.borderColor = '#ff4444';
         } else {
             muteBtn.innerHTML = '🔊';
             muteBtn.style.borderColor = 'white';
-            
             if (!isMusicPlaying && gameState === 'PLAY') {
                 bgm.play().then(() => { isMusicPlaying = true; }).catch(console.error);
             }
@@ -385,19 +501,23 @@
         }
 
         switchSprite(sprite) {
+            // Priority 0: DEAD
             if (this.image === this.sprites.death.image) {
                 if (this.framesCurrent === this.sprites.death.framesMax - 1) 
                     this.dead = true;
                 return;
             }
 
+            // Priority 0.5: WIN
             if (this.image === this.sprites.win.image) return;
 
+            // Priority 1: HIT Animation
             if (
                 this.image === this.sprites.hit.image &&
                 this.framesCurrent < this.sprites.hit.framesMax - 1
             ) return;
 
+            // Priority 2: ATTACK Animation
             if (sprite !== 'hit' && sprite !== 'death' && sprite !== 'win') {
                 if (
                     this.image === this.sprites.kick.image && 
@@ -410,6 +530,7 @@
                 ) return;
             }
 
+            // Switch Logic
             if (this.image !== this.sprites[sprite].image) {
                 this.image = this.sprites[sprite].image;
                 this.framesMax = this.sprites[sprite].framesMax;
@@ -469,6 +590,7 @@
         update() {
             this.draw();
             
+            // --- LOGIKA ANIMASI DEATH (NO LOOP) ---
             if (this.image === this.sprites.death.image) {
                 this.framesElapsed++;
                 if (this.framesElapsed % this.framesHold === 0) {
@@ -477,6 +599,17 @@
                     }
                 }
                 return; 
+            }
+
+            // --- LOGIKA ANIMASI WIN (NO LOOP) ---
+            if (this.image === this.sprites.win.image) {
+                this.framesElapsed++;
+                if (this.framesElapsed % this.framesHold === 0) {
+                    if (this.framesCurrent < this.framesMax - 1) {
+                        this.framesCurrent++;
+                    }
+                }
+                return; // Berhenti update physics agar pose kemenangan statis
             }
 
             this.framesElapsed++;
@@ -496,8 +629,6 @@
                 }
             }
             
-            if (this.image === this.sprites.win.image) return;
-
             this.attackBox.position.x = this.position.x + this.attackBox.offset.x;
             this.attackBox.position.y = this.position.y + 20;
 
@@ -523,7 +654,16 @@
             if (this.isAttacking) return;
             
             this.isAttacking = true;
+            this.velocity.x = 0; 
             this.attackType = type;
+
+            playSound(audioAssets.swing);
+
+            if (!this.isEnemy) {
+                playSound(audioAssets.playerVoice);
+            } else {
+                playSound(audioAssets.enemyVoice);
+            }
 
             if (type === 'punch') { 
                 this.attackBox.width = 100; 
@@ -541,7 +681,7 @@
     // --- INISIALISASI ---
     const Y_OFFSET_NORMAL = 25; 
     const Y_OFFSET_DEATH = 80;  
-    const Y_OFFSET_PUNCH = 55; // <-- OFFSET BARU: Turunkan gambar punch 55px ke bawah
+    const Y_OFFSET_PUNCH = 55; 
     
     const gameBackground = new Background({
         imageSrc: BACKGROUND_URL,
@@ -560,7 +700,6 @@
             idle: { imageSrc: IDLE_SPRITE_URL, framesMax: 1, offset: {x:0, y: Y_OFFSET_NORMAL} },
             run: { imageSrc: IDLE_SPRITE_URL, framesMax: 2, offset: {x:0, y: Y_OFFSET_NORMAL} },
             kick: { imageSrc: KICK_SPRITE_URL, framesMax: 2, offset: {x:0, y: Y_OFFSET_NORMAL} },
-            // Gunakan Y_OFFSET_PUNCH di sini
             punch: { imageSrc: PUNCH_SPRITE_URL, framesMax: 2, offset: {x:0, y: Y_OFFSET_PUNCH} },
             hit: { imageSrc: HIT_SPRITE_URL, framesMax: 1, offset: {x:0, y: Y_OFFSET_NORMAL} },
             death: { imageSrc: DEATH_SPRITE_URL, framesMax: 5, offset: {x:0, y: Y_OFFSET_DEATH} },
@@ -578,7 +717,6 @@
              idle: { imageSrc: IDLE_SPRITE_URL, framesMax: 1, offset: {x:0, y: Y_OFFSET_NORMAL} },
              run: { imageSrc: IDLE_SPRITE_URL, framesMax: 2, offset: {x:0, y: Y_OFFSET_NORMAL} },
              kick: { imageSrc: KICK_SPRITE_URL, framesMax: 2, offset: {x:0, y: Y_OFFSET_NORMAL} },
-             // Gunakan Y_OFFSET_PUNCH di sini
              punch: { imageSrc: PUNCH_SPRITE_URL, framesMax: 2, offset: {x:0, y: Y_OFFSET_PUNCH} },
              hit: { imageSrc: HIT_SPRITE_URL, framesMax: 1, offset: {x:0, y: Y_OFFSET_NORMAL} },
              death: { imageSrc: DEATH_SPRITE_URL, framesMax: 5, offset: {x:0, y: Y_OFFSET_DEATH} },
@@ -591,11 +729,12 @@
         velocity: { x: -2, y: 0 } 
     });
 
-    const keys = { ArrowRight: { pressed: false }, ArrowLeft: { pressed: false } };
+    const keys = { d: { pressed: false }, a: { pressed: false } };
 
     let timer = 60;
     let timerId;
     let gameState = 'MENU';
+    let koSoundPlayed = false; 
 
     function rectangularCollision({ rectangle1, rectangle2 }) {
         let attackX = rectangle1.facing === 1 ? rectangle1.position.x + rectangle1.width : rectangle1.position.x - rectangle1.attackBox.width;
@@ -630,20 +769,37 @@
 
     function aiLogic() {
         if (gameState !== 'PLAY') return;
+        
         if (enemy.image === enemy.sprites.hit.image || enemy.image === enemy.sprites.death.image) return;
+
+        if (enemy.isAttacking) {
+            enemy.velocity.x = 0;
+            return;
+        }
 
         const dx = player.position.x - enemy.position.x;
         const distance = Math.abs(dx);
         enemy.velocity.x = 0;
         
-        if (distance > 80) enemy.velocity.x = dx > 0 ? 3 : -3;
-        else if (Math.random() < 0.03) enemy.attack('punch');
+        if (distance > 80) {
+            enemy.velocity.x = dx > 0 ? 3 : -3;
+            enemy.switchSprite('run');
+        } else {
+            enemy.velocity.x = 0;
+            const rand = Math.random();
+            if (rand < 0.02) {
+                enemy.attack('punch');
+            } else if (rand < 0.04) {
+                enemy.attack('kick');
+            } else {
+                enemy.switchSprite('idle');
+            }
+        }
     }
 
     function animate() {
         window.requestAnimationFrame(animate);
         
-        // Background
         gameBackground.update();
         crow.update();
 
@@ -651,26 +807,22 @@
             ctx.fillStyle = 'rgba(0,0,0,0.5)';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             
-            // JUDUL GAME DENGAN FONT BARU
             ctx.font = '100px "Violence", sans-serif';
             ctx.textAlign = 'center';
             
-            // Efek Shadow pada Teks
             ctx.shadowColor = "rgba(0,0,0,0.8)";
             ctx.shadowBlur = 10;
             ctx.shadowOffsetX = 5;
             ctx.shadowOffsetY = 5;
 
-            // Gradient Teks Merah-Orange
             let gradient = ctx.createLinearGradient(0, canvas.height/2 - 100, 0, canvas.height/2);
-            gradient.addColorStop(0, '#ffcc00'); // Orange Terang
-            gradient.addColorStop(0.5, '#ff4500'); // Orange Merah
-            gradient.addColorStop(1, '#8b0000'); // Merah Gelap
+            gradient.addColorStop(0, '#ffcc00'); 
+            gradient.addColorStop(0.5, '#ff4500'); 
+            gradient.addColorStop(1, '#8b0000'); 
             
             ctx.fillStyle = gradient;
             ctx.fillText("HELLIONS", canvas.width/2, canvas.height/2 - 50);
             
-            // Reset Shadow untuk teks kecil
             ctx.shadowBlur = 0;
             ctx.shadowOffsetX = 0;
             ctx.shadowOffsetY = 0;
@@ -695,6 +847,14 @@
         enemy.update();
 
         if (gameState === 'PLAY') {
+            // KO Logic
+            if (enemy.health <= 0 || player.health <= 0) {
+                if (!koSoundPlayed) {
+                    playSound(audioAssets.ko);
+                    koSoundPlayed = true;
+                }
+            }
+
             if (enemy.health <= 0) {
                 enemy.switchSprite('death');
                 determineWinner({ player, enemy, timerId });
@@ -709,7 +869,6 @@
             ctx.fillStyle = 'rgba(0,0,0,0.4)'; 
             ctx.fillRect(0,0, canvas.width, canvas.height);
             
-            // TEXT YOU WIN / LOSE DENGAN FONT BARU (DIGESER KE ATAS)
             ctx.font = '100px "Violence", sans-serif';
             ctx.textAlign = 'center';
             
@@ -725,7 +884,6 @@
             if (player.health > enemy.health) msg = "YOU WIN";
             if (player.health === enemy.health) msg = "DRAW";
             
-            // Render Teks Lebih ke Atas (y - 50)
             ctx.fillText(msg, canvas.width/2, canvas.height/2 - 50);
             
             ctx.shadowBlur = 0;
@@ -738,11 +896,12 @@
         aiLogic();
 
         player.velocity.x = 0;
-        if (player.health > 0 && player.image !== player.sprites.hit.image && gameState === 'PLAY') {
-            if (keys.ArrowLeft.pressed && player.lastKey === 'ArrowLeft') {
+        // Tambahkan check !player.isAttacking agar tidak bisa jalan saat menyerang
+        if (player.health > 0 && player.image !== player.sprites.hit.image && gameState === 'PLAY' && !player.isAttacking) {
+            if (keys.a.pressed && player.lastKey === 'a') {
                 player.velocity.x = -5;
                 player.switchSprite('run');
-            } else if (keys.ArrowRight.pressed && player.lastKey === 'ArrowRight') {
+            } else if (keys.d.pressed && player.lastKey === 'd') {
                 player.velocity.x = 5;
                 player.switchSprite('run');
             } else {
@@ -751,24 +910,113 @@
         }
 
         if (player.health > 0 && enemy.health > 0 && gameState === 'PLAY') {
+            // Player Hit Enemy
             if (rectangularCollision({ rectangle1: player, rectangle2: enemy }) && player.isAttacking && player.framesCurrent >= 1) { 
                 player.isAttacking = false;
-                let damage = player.attackType === 'kick' ? 10 : 5;
+                let damage = player.attackType === 'kick' ? 5 : 2;
                 enemy.health -= damage;
                 enemy.takeHit(); 
+                
+                // Play HIT Sound
+                if (player.attackType === 'kick') playSound(audioAssets.hitKick);
+                else playSound(audioAssets.hitPunch);
+
                 document.querySelector('#enemy-health').style.width = Math.max(0, enemy.health) + '%';
             }
 
+            // Enemy Hit Player
             if (rectangularCollision({ rectangle1: enemy, rectangle2: player }) && enemy.isAttacking && enemy.framesCurrent >= 1) {
                 enemy.isAttacking = false;
                 player.health -= 5;
                 player.takeHit(); 
+                
+                // Play HIT Sound
+                if (enemy.attackType === 'kick') playSound(audioAssets.hitKick);
+                else playSound(audioAssets.hitPunch);
+
                 document.querySelector('#player-health').style.width = Math.max(0, player.health) + '%';
             }
         }
     }
 
     animate();
+
+    // Event Listeners for Mobile Controls
+    const btnLeft = document.getElementById('btn-left');
+    const btnRight = document.getElementById('btn-right');
+    const btnPunch = document.getElementById('btn-punch');
+    const btnKick = document.getElementById('btn-kick');
+
+    // Function to handle touch start
+    function handleTouchStart(action) {
+        if (gameState !== 'PLAY') {
+             // Allow restart on touch if game over
+             if(gameState === 'GAMEOVER' || gameState === 'MENU') {
+                 // Trigger restart logic (simulate Space)
+                 const event = new KeyboardEvent('keydown', { 'code': 'Space' });
+                 window.dispatchEvent(event);
+                 return;
+             }
+             return;
+        }
+        
+        if (player.health <= 0 || player.image === player.sprites.hit.image) return;
+
+        switch (action) {
+            case 'left':
+                keys.a.pressed = true;
+                player.lastKey = 'a';
+                btnLeft.classList.add('active');
+                break;
+            case 'right':
+                keys.d.pressed = true;
+                player.lastKey = 'd';
+                btnRight.classList.add('active');
+                break;
+            case 'punch':
+                player.attack('punch');
+                btnPunch.classList.add('active');
+                break;
+            case 'kick':
+                player.attack('kick');
+                btnKick.classList.add('active');
+                break;
+        }
+    }
+
+    // Function to handle touch end
+    function handleTouchEnd(action) {
+        switch (action) {
+            case 'left':
+                keys.a.pressed = false;
+                btnLeft.classList.remove('active');
+                break;
+            case 'right':
+                keys.d.pressed = false;
+                btnRight.classList.remove('active');
+                break;
+            case 'punch':
+                btnPunch.classList.remove('active');
+                break;
+            case 'kick':
+                btnKick.classList.remove('active');
+                break;
+        }
+    }
+
+    // Assign listeners
+    btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouchStart('left'); });
+    btnLeft.addEventListener('touchend', (e) => { e.preventDefault(); handleTouchEnd('left'); });
+    
+    btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouchStart('right'); });
+    btnRight.addEventListener('touchend', (e) => { e.preventDefault(); handleTouchEnd('right'); });
+
+    btnPunch.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouchStart('punch'); });
+    btnPunch.addEventListener('touchend', (e) => { e.preventDefault(); handleTouchEnd('punch'); });
+
+    btnKick.addEventListener('touchstart', (e) => { e.preventDefault(); handleTouchStart('kick'); });
+    btnKick.addEventListener('touchend', (e) => { e.preventDefault(); handleTouchEnd('kick'); });
+
 
     window.addEventListener('keydown', (event) => {
         if (gameState === 'MENU' || gameState === 'GAMEOVER') {
@@ -779,6 +1027,8 @@
                 enemy.health = 100;
                 player.dead = false; 
                 enemy.dead = false;
+                koSoundPlayed = false; 
+
                 player.position.x = 100;
                 enemy.position.x = 800;
                 player.framesHold = 10;
@@ -804,19 +1054,29 @@
         if (gameState === 'PLAY') {
             if (player.health <= 0 || player.image === player.sprites.hit.image) return;
 
-            switch (event.key) {
-                case 'ArrowRight': keys.ArrowRight.pressed = true; player.lastKey = 'ArrowRight'; break;
-                case 'ArrowLeft': keys.ArrowLeft.pressed = true; player.lastKey = 'ArrowLeft'; break;
-                case 'z': case 'Z': player.attack('punch'); break;
-                case 'x': case 'X': player.attack('kick'); break;
+            switch (event.key.toLowerCase()) {
+                case 'd':
+                    keys.d.pressed = true;
+                    player.lastKey = 'd';
+                    break;
+                case 'a':
+                    keys.a.pressed = true;
+                    player.lastKey = 'a';
+                    break;
+                case 'n':
+                    player.attack('punch');
+                    break;
+                case 'm':
+                    player.attack('kick');
+                    break;
             }
         }
     });
 
     window.addEventListener('keyup', (event) => {
-        switch (event.key) {
-            case 'ArrowRight': keys.ArrowRight.pressed = false; break;
-            case 'ArrowLeft': keys.ArrowLeft.pressed = false; break;
+        switch (event.key.toLowerCase()) {
+            case 'd': keys.d.pressed = false; break;
+            case 'a': keys.a.pressed = false; break;
         }
     });
 </script>
