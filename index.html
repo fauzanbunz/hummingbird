@@ -126,7 +126,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 24px;
+            font-size: 35px;
             font-weight: bold;
             text-shadow: 0 0 5px cyan;
         }
@@ -186,6 +186,7 @@
             100% { transform: translate(-50%, -50%) rotate(0deg); }
         }
 
+        /* --- CONTROLS UI --- */
         #controls-hint {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
             color: rgba(255,255,255, 0.9); font-size: 10px;
@@ -202,6 +203,7 @@
             z-index: 100; font-family: sans-serif; 
         }
 
+        /* --- MOBILE CONTROLS --- */
         #mobile-controls {
             position: absolute; bottom: 20px; width: 100%; height: 150px;
             display: flex; justify-content: space-between; padding: 0 40px;
@@ -364,6 +366,7 @@
             dims: { width: 128, height: 128 },
             offset: { x: 0, y: 25 },
             scale: 1.8,
+            profile: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/ttl.jpg',
             sprites: {
                 idle: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/toly.png', frames: 1 },
                 run: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/twalk.png', frames: 2 },
@@ -392,6 +395,7 @@
             dims: { width: 128, height: 128 },
             offset: { x: 0, y: 25 },
             scale: 1.8,
+            profile: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/ttl2.jpg',
             sprites: {
                 idle: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/bonk%20idle.png', frames: 1 }, 
                 run: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/bonk%20walk.png', frames: 2 },
@@ -432,7 +436,9 @@
         ko: new Audio('https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/ko.wav'),
         voiceP: new Audio('https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/man%20voice.wav'),
         voiceE: new Audio('https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/man%20voice%202.wav'),
-        readyFight: new Audio('https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/Ready%20Fight!%20Sound%20Effect.mp3')
+        readyFight: new Audio('https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/Ready%20Fight!%20Sound%20Effect.mp3'),
+        finishHim: new Audio('https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/FINISH%20HIM%20_%20Sound%20Effect.mp3'),
+        fatalityTheme: new Audio('https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/Mortal%20Kombat%201%20Fatality%20Theme%20(mp3cut.net).mp3')
     };
     AUDIO.music.loop = true;
     AUDIO.music.volume = 0.5;
@@ -462,7 +468,7 @@
     let enemyWins = 0;
     let currentRound = 1;
     let finishHimActive = false; 
-    let fatalityPerformed = false; // Flag Fatality
+    let fatalityPerformed = false; 
 
     const keys = { 
         d: { pressed: false }, 
@@ -482,12 +488,17 @@
         for (const [key, val] of Object.entries(data)) {
             const card = document.createElement('div');
             card.className = 'card';
+            
             let imgSrc;
-            if (val.sprites) {
+            // CHECK PROFILE FIRST
+            if (val.profile) {
+                imgSrc = val.profile;
+            } else if (val.sprites) {
                 imgSrc = val.sprites.idle ? val.sprites.idle.src : val.sprites.start.src;
             } else {
                 imgSrc = val.src;
             }
+            
             card.innerHTML = `<img src="${imgSrc}"><span>${val.name}</span>`;
             card.onclick = () => {
                 Array.from(container.children).forEach(c => c.classList.remove('selected'));
@@ -535,7 +546,20 @@
     }
 
     function resetMenu() {
+        // Reset full game state
+        gameState = 'MENU';
+        playerWins = 0;
+        enemyWins = 0;
+        currentRound = 1;
+        updateWinIndicators();
+        // Hide overlays
+        document.getElementById('overlay-text').style.display = 'none';
+        document.getElementById('fatality-text').style.display = 'none';
+        
         showLayer('menu-main');
+        
+        // Restore BGM
+        if(!AUDIO.music.muted) AUDIO.music.play().catch(e=>{});
     }
 
     function startMatch() {
@@ -549,6 +573,8 @@
         document.getElementById('controls-hint').style.display = 'block';
         document.getElementById('mobile-controls').style.display = 'flex';
         startBattleSequence();
+        
+        if(!AUDIO.music.muted) AUDIO.music.play().catch(e=>{});
     }
 
     function startBattleSequence() {
@@ -564,6 +590,7 @@
         timer = 60;
         document.getElementById('timer').innerHTML = timer;
         document.getElementById('fatality-text').style.display = 'none'; 
+        document.getElementById('overlay-text').style.display = 'none';
 
         document.querySelector('#player-health').style.width = '100%';
         document.querySelector('#enemy-health').style.width = '100%';
@@ -863,7 +890,7 @@
                     this.framesHold = 60; // Keep it slow/static
                     this.frameDims = this.sprites.stun.frameDims || this.defaultDims;
                     this.offset = this.sprites.stun.offset || this.currentOffset;
-                    this.loop = true; // Stun can loop if it has frames
+                    this.loop = true; 
                     this.framesCurrent = 0;
                  }
                  return;
@@ -983,9 +1010,8 @@
                     }
                 }
             }
-            // STUN LOGIC (Hold frame if 1 frame, else loop)
             else if (this.sprites.stun && this.image === this.sprites.stun.image) {
-                this.velocity.x = 0; // Stunned = no move
+                this.velocity.x = 0; 
                 this.framesElapsed++;
                  if (this.framesElapsed % this.framesHold === 0) {
                      if (this.framesCurrent < this.framesMax - 1) {
@@ -1066,19 +1092,21 @@
         updateWinIndicators(); 
 
         const overlay = document.getElementById('overlay-text');
-        overlay.style.display = 'block';
         
         if (playerWins >= 2 || enemyWins >= 2) {
              let msg = (playerWins >= 2) ? "YOU WIN THE MATCH!" : "YOU LOSE";
              if(playerWins === 2 && enemyWins === 2) msg = "DRAW GAME"; 
 
-             overlay.innerHTML = `${msg}<br><span style="font-size: 20px; color: white;">Press Space to Restart</span>`;
-             
+             // Delay showing WIN/LOSE text if fatality happens so it doesn't overlap
+             let delay = fatalityPerformed ? 2000 : 1000;
              setTimeout(() => {
+                 overlay.style.display = 'block';
+                 overlay.innerHTML = `${msg}<br><button class="menu-btn" onclick="resetMenu()">BACK TO MAIN MENU</button>`;
                  gameState = 'GAMEOVER'; 
-             }, 1000);
+             }, delay);
 
         } else {
+             overlay.style.display = 'block';
              overlay.innerHTML = `${roundWinner} WINS ROUND ${currentRound}`;
              overlay.style.fontSize = "50px";
              overlay.style.color = "#ffcc00";
@@ -1098,9 +1126,9 @@
         overlay.innerText = "FINISH HIM!";
         overlay.style.color = "red";
         overlay.style.fontSize = "80px";
+        playSound(AUDIO.finishHim); // Play Finish Him Sound
         clearTimeout(timerId);
         
-        // SWITCH LOSER TO STUN
         if (player.health <= 0) player.switchSprite('stun');
         else if (enemy.health <= 0) enemy.switchSprite('stun');
         
@@ -1113,9 +1141,22 @@
     
     function performFatality(winner, loser) {
         clearTimeout(finishHimTimer);
-        fatalityPerformed = true; // Set Flag
+        fatalityPerformed = true; 
+
+        // Stop BGM
+        AUDIO.music.pause();
+        AUDIO.music.currentTime = 0;
+
+        // Play Fatality Theme
+        playSound(AUDIO.fatalityTheme);
+
+        // Hide overlay text like FINISH HIM
+        document.getElementById('overlay-text').style.display = 'none';
 
         document.getElementById('fatality-text').style.display = 'block';
+        // Red flash handled in animate loop via fillRect overlay
+        // Trigger red flash effect for short duration
+        // We can just use CSS here briefly
         document.body.style.backgroundColor = 'red'; 
         setTimeout(() => document.body.style.backgroundColor = '#111', 100);
         
@@ -1123,12 +1164,12 @@
         loser.dead = true;
         winner.switchSprite('fatality'); 
 
-        playSound(AUDIO.ko);
+        // playSound(AUDIO.ko); // KO sound might clash with fatality theme, maybe remove or keep
 
         setTimeout(() => {
             determineWinner({ player, enemy, timerId }); 
             document.getElementById('fatality-text').style.display = 'none';
-        }, 2000);
+        }, 3000);
     }
 
     function decreaseTimer() {
@@ -1144,7 +1185,6 @@
         if (gameState !== 'PLAY') return;
         if (enemy.image === enemy.sprites.hit.image || enemy.image === enemy.sprites.death.image) return;
         
-        // Don't move if stunned
         if (finishHimActive && enemy.health <= 0) {
             enemy.velocity.x = 0;
             return; 
@@ -1182,6 +1222,12 @@
         if (gameBackground) gameBackground.update();
         if (crow) crow.update();
 
+        // DIMMER LOGIC FOR FATALITY
+        if (fatalityPerformed || finishHimActive) {
+             ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; // Darken background
+             ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
         if (gameState === 'MENU' || gameState.includes('_SELECT')) return;
 
         if (player.health > 0 && enemy.health > 0 && (gameState === 'PLAY' || gameState === 'PRE_FIGHT')) {
@@ -1195,6 +1241,7 @@
         player.update();
         enemy.update();
 
+        // --- BODY COLLISION LOGIC ---
         const isPlayerAirborne = player.position.y + player.height < canvas.height - GROUND_HEIGHT - 10;
         const isEnemyAirborne = enemy.position.y + enemy.height < canvas.height - GROUND_HEIGHT - 10;
         
@@ -1292,10 +1339,7 @@
 
     window.addEventListener('keydown', (event) => {
         if (gameState === 'GAMEOVER') {
-            if (event.code === 'Space') {
-                document.getElementById('overlay-text').style.display = 'none';
-                startMatch();
-            }
+             // Space removed, button handles it
             return;
         }
 
