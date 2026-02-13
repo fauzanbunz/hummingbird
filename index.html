@@ -423,8 +423,7 @@
     };
 
     const STAGES = {
-        'city': { name: 'NEON CITY', src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/bg%20final.png', frames: 2, dims: {width: 700, height: 400} },
-        'alley': { name: 'BACK ALLEY', src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/jan.png', frames: 2, dims: {width: 700, height: 400} }
+        'city': { name: 'NEON CITY', src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/bg%20final.png', frames: 2, dims: {width: 700, height: 400} }
     };
 
     // --- AUDIO ---
@@ -488,17 +487,13 @@
         for (const [key, val] of Object.entries(data)) {
             const card = document.createElement('div');
             card.className = 'card';
-            
             let imgSrc;
-            // CHECK PROFILE FIRST
-            if (val.profile) {
-                imgSrc = val.profile;
-            } else if (val.sprites) {
-                imgSrc = val.sprites.idle ? val.sprites.idle.src : val.sprites.start.src;
+            if (val.sprites) {
+                // Check profile first
+                imgSrc = val.profile ? val.profile : (val.sprites.idle ? val.sprites.idle.src : val.sprites.start.src);
             } else {
                 imgSrc = val.src;
             }
-            
             card.innerHTML = `<img src="${imgSrc}"><span>${val.name}</span>`;
             card.onclick = () => {
                 Array.from(container.children).forEach(c => c.classList.remove('selected'));
@@ -558,7 +553,9 @@
         
         showLayer('menu-main');
         
-        // Restore BGM
+        // Restore BGM and ensure Fatality theme is stopped
+        AUDIO.fatalityTheme.pause();
+        AUDIO.fatalityTheme.currentTime = 0;
         if(!AUDIO.music.muted) AUDIO.music.play().catch(e=>{});
     }
 
@@ -573,8 +570,6 @@
         document.getElementById('controls-hint').style.display = 'block';
         document.getElementById('mobile-controls').style.display = 'flex';
         startBattleSequence();
-        
-        if(!AUDIO.music.muted) AUDIO.music.play().catch(e=>{});
     }
 
     function startBattleSequence() {
@@ -586,6 +581,10 @@
         finishHimActive = false; 
         fatalityPerformed = false; 
         
+        // Stop Fatality Theme (Add this)
+        AUDIO.fatalityTheme.pause();
+        AUDIO.fatalityTheme.currentTime = 0;
+
         // Reset Timer
         timer = 60;
         document.getElementById('timer').innerHTML = timer;
@@ -620,6 +619,9 @@
         if (enemy.sprites.start) enemy.switchSprite('start');
 
         playSound(AUDIO.readyFight);
+        
+        // Resume BGM
+        if (!AUDIO.music.muted) AUDIO.music.play().catch(e=>{});
 
         gameState = 'PRE_FIGHT';
         const overlay = document.getElementById('overlay-text');
@@ -1148,7 +1150,12 @@
         AUDIO.music.currentTime = 0;
 
         // Play Fatality Theme
-        playSound(AUDIO.fatalityTheme);
+        // playSound(AUDIO.fatalityTheme); // CHANGE THIS
+        if (!AUDIO.music.muted) {
+             AUDIO.fatalityTheme.currentTime = 0;
+             AUDIO.fatalityTheme.volume = 0.8;
+             AUDIO.fatalityTheme.play().catch(e=>{});
+        }
 
         // Hide overlay text like FINISH HIM
         document.getElementById('overlay-text').style.display = 'none';
