@@ -338,6 +338,11 @@
             </div>
         </div>
     </div>
+    <script>
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js");
+  }
+</script>
 
 <script>
 // IIFE untuk Enkapsulasi Variabel (ANTI-CHEAT: Menyembunyikan variabel global)
@@ -1470,3 +1475,4 @@
 </script>
 </body>
 </html>
+
