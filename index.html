@@ -140,14 +140,12 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            font-size: 35px;
+            font-size: 24px;
             font-weight: bold;
             text-shadow: 0 0 5px cyan;
         }
 
         /* MENUS & TEXT */
-        h1, h2, .menu-btn { font-family: 'Press Start 2P', cursive; }
-        
         h1 {
             font-size: 60px; margin: 0 0 30px 0;
             background: -webkit-linear-gradient(#9945FF, #14F195);
@@ -338,11 +336,6 @@
             </div>
         </div>
     </div>
-    <script>
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js");
-  }
-</script>
 
 <script>
 // IIFE untuk Enkapsulasi Variabel (ANTI-CHEAT: Menyembunyikan variabel global)
@@ -354,6 +347,28 @@
             e.preventDefault();
         }
     });
+
+    // --- RESPONSIVE SCALING LOGIC FOR MOBILE (FIXED TARGET) ---
+    function resizeGame() {
+        // Target #game-wrapper which is the parent with the fixed 16:9 ratio
+        const wrapper = document.getElementById('game-wrapper');
+        const targetRatio = 1024 / 576;
+        const windowRatio = window.innerWidth / window.innerHeight;
+        let scale;
+
+        if (windowRatio < targetRatio) {
+            scale = window.innerWidth / 1024;
+        } else {
+            scale = window.innerHeight / 576;
+        }
+
+        // Apply scale, keep centered
+        wrapper.style.transform = `scale(${scale})`;
+    }
+
+    window.addEventListener('resize', resizeGame);
+    window.addEventListener('load', resizeGame);
+
 
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -555,7 +570,6 @@
         if(AUDIO.music.paused) AUDIO.music.play().catch(e=>{});
         generateGrid('char-grid', CHARACTERS, (key) => playerSelection = key);
         showLayer('menu-char');
-        // Next buttons generated dynamically, simple logic
         let btn = document.getElementById('char-next-btn');
         if(!btn) {
             btn = document.createElement('button');
@@ -605,7 +619,7 @@
         // Hide overlays
         document.getElementById('overlay-text').style.display = 'none';
         document.getElementById('fatality-text').style.display = 'none';
-        document.getElementById('game-over-screen').style.display = 'none'; // Hide static game over
+        document.getElementById('game-over-screen').style.display = 'none'; 
         
         showLayer('menu-main');
         
@@ -639,7 +653,6 @@
         finishHimActive = false; 
         fatalityPerformed = false; 
         
-        // Reset Timer
         timer = 60;
         document.getElementById('timer').innerHTML = timer;
         document.getElementById('fatality-text').style.display = 'none'; 
@@ -780,6 +793,7 @@
         }
 
         draw() {
+            if (!this.image) return;
             ctx.drawImage(
                 this.image,
                 this.framesCurrent * this.frameDims.width,
@@ -924,7 +938,7 @@
                 return;
             }
 
-            // FORCE DEATH LOGIC (Include specific deaths)
+            // FORCE DEATH LOGIC
             if (sprite === 'death' || sprite.startsWith('deathBy_')) {
                  if (this.image !== this.sprites[sprite].image) {
                     this.image = this.sprites[sprite].image;
@@ -1004,12 +1018,14 @@
                 ctx.fill();
             }
 
-            ctx.drawImage(
-                this.image,
-                this.framesCurrent * this.frameDims.width, 
-                0, this.frameDims.width, this.frameDims.height,                     
-                drawX, drawY, scaledWidth, scaledHeight         
-            );
+            if (this.image) {
+                ctx.drawImage(
+                    this.image,
+                    this.framesCurrent * this.frameDims.width, 
+                    0, this.frameDims.width, this.frameDims.height,                     
+                    drawX, drawY, scaledWidth, scaledHeight         
+                );
+            }
             ctx.restore();
 
             if (this.isAttacking) {
@@ -1135,7 +1151,6 @@
         if (player.health > enemy.health) {
             playerWins++;
             roundWinner = "PLAYER";
-            // Check Fatality Flag
             if (!fatalityPerformed) player.switchSprite('win');
         } else if (enemy.health > player.health) {
             enemyWins++;
@@ -1155,7 +1170,6 @@
 
              let delay = fatalityPerformed ? 2000 : 1000;
              setTimeout(() => {
-                // Show static Game Over screen
                 document.getElementById('game-over-screen').style.display = 'flex';
                 document.getElementById('game-over-title').innerText = msg;
                 gameState = 'GAMEOVER'; 
@@ -1211,16 +1225,12 @@
         document.getElementById('overlay-text').style.display = 'none';
 
         document.getElementById('fatality-text').style.display = 'block';
-        // Red flash handled in animate loop via fillRect overlay
-        // Trigger red flash effect for short duration
         document.body.style.backgroundColor = 'red'; 
         setTimeout(() => document.body.style.backgroundColor = '#050505', 100);
         
         loser.switchSprite('deathBy_' + winner.id); 
         loser.dead = true;
         winner.switchSprite('fatality'); 
-
-        // playSound(AUDIO.ko); // KO sound might clash with fatality theme
 
         setTimeout(() => {
             determineWinner({ player, enemy, timerId }); 
@@ -1278,9 +1288,8 @@
         if (gameBackground) gameBackground.update();
         if (crow) crow.update();
 
-        // DIMMER LOGIC FOR FATALITY
         if (fatalityPerformed || finishHimActive) {
-             ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; // Darken background
+             ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; 
              ctx.fillRect(0, 0, canvas.width, canvas.height);
         }
 
@@ -1297,7 +1306,6 @@
         player.update();
         enemy.update();
 
-        // --- BODY COLLISION LOGIC ---
         const isPlayerAirborne = player.position.y + player.height < canvas.height - GROUND_HEIGHT - 10;
         const isEnemyAirborne = enemy.position.y + enemy.height < canvas.height - GROUND_HEIGHT - 10;
         
@@ -1385,10 +1393,6 @@
                 }
             }
         }
-        
-        if (gameState === 'GAMEOVER') {
-             // Overlay handled by DOM
-        }
     }
 
     animate();
@@ -1475,4 +1479,3 @@
 </script>
 </body>
 </html>
-
