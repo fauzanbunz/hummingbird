@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <link rel="manifest" href="manifest.json">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>HELLIONS - Solana Seeker Edition</title>
@@ -147,6 +146,8 @@
         }
 
         /* MENUS & TEXT */
+        h1, h2, .menu-btn { font-family: 'Press Start 2P', cursive; }
+        
         h1 {
             font-size: 60px; margin: 0 0 30px 0;
             background: -webkit-linear-gradient(#9945FF, #14F195);
@@ -455,7 +456,8 @@
     };
 
     const STAGES = {
-        'city': { name: 'NEON CITY', src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/bg%20final.png', frames: 2, dims: {width: 700, height: 400} }
+        'city': { name: 'NEON CITY', src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/bg%20final.png', frames: 2, dims: {width: 700, height: 400} },
+        'alley': { name: 'BACK ALLEY', src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/jan.png', frames: 2, dims: {width: 700, height: 400} }
     };
 
     // --- AUDIO ---
@@ -589,12 +591,13 @@
     }
 
     function resetMenu() {
+        // Reset full game state
         gameState = 'MENU';
         playerWins = 0;
         enemyWins = 0;
         currentRound = 1;
         updateWinIndicators();
-        
+        // Hide overlays
         document.getElementById('overlay-text').style.display = 'none';
         document.getElementById('fatality-text').style.display = 'none';
         document.getElementById('game-over-screen').style.display = 'none'; // Hide static game over
@@ -631,6 +634,7 @@
         finishHimActive = false; 
         fatalityPerformed = false; 
         
+        // Reset Timer
         timer = 60;
         document.getElementById('timer').innerHTML = timer;
         document.getElementById('fatality-text').style.display = 'none'; 
@@ -643,6 +647,7 @@
         player.position.x = 200;
         enemy.position.x = 800;
 
+        // FORCE RESET ANIMATION STATE
         player.image = player.sprites.idle.image;
         player.framesCurrent = 0;
         player.isAttacking = false;
@@ -1465,4 +1470,3 @@
 </script>
 </body>
 </html>
-
