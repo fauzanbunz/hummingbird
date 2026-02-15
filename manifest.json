@@ -16,3 +16,20 @@
     }
   ]
 }
+"icons": [
+    ... (kode icon kamu sebelumnya) ...
+  ], 
+  "screenshots": [
+    {
+      "src": "shot1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "shot2.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    }
+  ]
