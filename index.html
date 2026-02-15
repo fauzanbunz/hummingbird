@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HELLIONS - Final Version</title>
+    <title>HELLIONS - Solana Seeker Edition</title>
     
     <!-- IMPORT FONT -->
     <link href="https://fonts.googleapis.com/css2?family=Knewave&display=swap" rel="stylesheet">
@@ -12,24 +12,38 @@
     <style>
         body {
             margin: 0;
-            background-color: #111;
+            background-color: #050505; /* Solana Dark Theme */
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
+            width: 100vw;
             overflow: hidden;
             font-family: 'Press Start 2P', cursive;
             touch-action: none; 
             color: white;
+            user-select: none; /* Anti-select text */
+            -webkit-user-select: none;
+        }
+
+        /* Container Game Skala 16:9 */
+        #game-wrapper {
+            position: relative;
+            width: 1024px;
+            height: 576px;
+            transform-origin: center center;
+            box-shadow: 0 0 80px rgba(153, 69, 255, 0.3); /* Solana Purple Glow */
         }
 
         #game-container {
-            position: relative;
-            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
-            border: 4px solid #444;
-            width: 1024px;
-            height: 576px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 4px solid #333;
             background: #000;
+            overflow: hidden;
         }
 
         canvas {
@@ -132,13 +146,12 @@
         }
 
         /* MENUS & TEXT */
-        h1, h2, .menu-btn { font-family: 'Press Start 2P', cursive; }
-        
         h1 {
             font-size: 60px; margin: 0 0 30px 0;
-            background: -webkit-linear-gradient(#ffcc00, #ff4500);
+            background: -webkit-linear-gradient(#9945FF, #14F195);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
             text-align: center;
+            text-shadow: 0px 0px 20px rgba(20, 241, 149, 0.5);
         }
         h2 { font-size: 24px; color: #fff; margin-bottom: 30px; text-align: center; }
 
@@ -148,8 +161,17 @@
             padding: 15px 30px; font-size: 18px; cursor: pointer; margin: 10px;
             text-shadow: 2px 2px 0px black;
             image-rendering: pixelated;
+            font-family: 'Press Start 2P', cursive;
         }
         .menu-btn:hover { transform: scale(1.1); box-shadow: 0 0 20px red; }
+
+        .solana-btn {
+            background: linear-gradient(45deg, #9945FF, #14F195);
+            border: 2px solid white;
+            margin-top: 20px;
+            font-size: 14px;
+            padding: 10px 20px;
+        }
 
         .grid-container { display: flex; gap: 20px; }
         .card {
@@ -186,7 +208,15 @@
             100% { transform: translate(-50%, -50%) rotate(0deg); }
         }
 
-        /* --- CONTROLS UI --- */
+        /* GAME OVER SCREEN */
+        #game-over-screen {
+            background: rgba(0,0,0,0.85);
+            z-index: 30;
+        }
+        #game-over-title {
+            font-size: 50px; color: #ffcc00; margin-bottom: 20px;
+        }
+
         #controls-hint {
             position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
             color: rgba(255,255,255, 0.9); font-size: 10px;
@@ -203,7 +233,6 @@
             z-index: 100; font-family: sans-serif; 
         }
 
-        /* --- MOBILE CONTROLS --- */
         #mobile-controls {
             position: absolute; bottom: 20px; width: 100%; height: 150px;
             display: flex; justify-content: space-between; padding: 0 40px;
@@ -226,74 +255,99 @@
 </head>
 <body>
 
-    <div id="game-container">
-        <canvas id="gameCanvas"></canvas>
+    <!-- WRAPPER FOR SCALING -->
+    <div id="game-wrapper">
+        <div id="game-container">
+            <canvas id="gameCanvas"></canvas>
 
-        <div id="menu-main" class="ui-layer active" style="background: rgba(0,0,0,0.7);">
-            <h1>HELLIONS</h1>
-            <button class="menu-btn" onclick="goToCharSelect()">START GAME</button>
-        </div>
+            <!-- 1. MAIN MENU -->
+            <div id="menu-main" class="ui-layer active" style="background: rgba(0,0,0,0.7);">
+                <h1>HELLIONS</h1>
+                <!-- Button IDs for JS Event Listeners (Anti-Cheat) -->
+                <button id="btn-start" class="menu-btn">START GAME</button>
+                <button id="btn-connect" class="menu-btn solana-btn">CONNECT WALLET</button>
+            </div>
 
-        <div id="menu-char" class="ui-layer" style="background: rgba(0,0,0,0.85);">
-            <h2>SELECT FIGHTER</h2>
-            <div class="grid-container" id="char-grid"></div>
-        </div>
+            <!-- 2. CHARACTER SELECT -->
+            <div id="menu-char" class="ui-layer" style="background: rgba(0,0,0,0.85);">
+                <h2>SELECT FIGHTER</h2>
+                <div class="grid-container" id="char-grid"></div>
+            </div>
 
-        <div id="menu-enemy" class="ui-layer" style="background: rgba(0,0,0,0.85);">
-            <h2>SELECT OPPONENT</h2>
-            <div class="grid-container" id="enemy-grid"></div>
-        </div>
+            <!-- 3. ENEMY SELECT -->
+            <div id="menu-enemy" class="ui-layer" style="background: rgba(0,0,0,0.85);">
+                <h2>SELECT OPPONENT</h2>
+                <div class="grid-container" id="enemy-grid"></div>
+            </div>
 
-        <div id="menu-stage" class="ui-layer" style="background: rgba(0,0,0,0.85);">
-            <h2>SELECT STAGE</h2>
-            <div class="grid-container" id="stage-grid"></div>
-        </div>
+            <!-- 4. STAGE SELECT -->
+            <div id="menu-stage" class="ui-layer" style="background: rgba(0,0,0,0.85);">
+                <h2>SELECT STAGE</h2>
+                <div class="grid-container" id="stage-grid"></div>
+            </div>
 
-        <div id="menu-confirm" class="ui-layer" style="background: rgba(0,0,0,0.7);">
-            <h2>READY TO BATTLE?</h2>
-            <button class="menu-btn" onclick="startMatch()">FIGHT!</button>
-            <button class="menu-btn" style="background: #333; font-size: 14px;" onclick="resetMenu()">BACK</button>
-        </div>
+            <!-- 5. CONFIRMATION -->
+            <div id="menu-confirm" class="ui-layer" style="background: rgba(0,0,0,0.7);">
+                <h2>READY TO BATTLE?</h2>
+                <button id="btn-fight" class="menu-btn">FIGHT!</button>
+                <button id="btn-back" class="menu-btn" style="background: #333; font-size: 14px;">BACK</button>
+            </div>
 
-        <div id="hud-layer" style="display: none;">
-            <div class="fighter-hud">
-                <div class="bar-border"><div id="player-health" class="health"></div></div>
-                <div class="win-dots" id="player-wins">
-                    <div class="dot" id="p-dot-1"></div>
-                    <div class="dot" id="p-dot-2"></div>
+            <!-- 6. GAME OVER SCREEN (NEW) -->
+            <div id="game-over-screen" class="ui-layer" style="display: none;">
+                <h1 id="game-over-title">GAME OVER</h1>
+                <button id="btn-restart" class="menu-btn">BACK TO MAIN MENU</button>
+            </div>
+
+            <div id="hud-layer" style="display: none;">
+                <div class="fighter-hud">
+                    <div class="bar-border"><div id="player-health" class="health"></div></div>
+                    <div class="win-dots" id="player-wins">
+                        <div class="dot" id="p-dot-1"></div>
+                        <div class="dot" id="p-dot-2"></div>
+                    </div>
+                </div>
+                <div id="timer">60</div>
+                <div class="fighter-hud" style="align-items: flex-end;">
+                    <div class="bar-border"><div id="enemy-health" class="health"></div></div>
+                    <div class="win-dots" id="enemy-wins" style="flex-direction: row-reverse;">
+                        <div class="dot" id="e-dot-1"></div>
+                        <div class="dot" id="e-dot-2"></div>
+                    </div>
                 </div>
             </div>
-            <div id="timer">60</div>
-            <div class="fighter-hud" style="align-items: flex-end;">
-                <div class="bar-border"><div id="enemy-health" class="health"></div></div>
-                <div class="win-dots" id="enemy-wins" style="flex-direction: row-reverse;">
-                    <div class="dot" id="e-dot-1"></div>
-                    <div class="dot" id="e-dot-2"></div>
+
+            <div id="overlay-text">FIGHT!</div>
+            <div id="fatality-text">FATALITY</div>
+
+            <div id="controls-hint" style="display: none;">Move: A/D | Jump: Space | Punch: N | Kick: M | Fatality: N+M</div>
+            <div id="mute-btn" title="Mute/Unmute">🔊</div>
+            
+            <div id="mobile-controls" style="display: none;">
+                <div class="control-group">
+                    <div class="touch-btn" id="btn-left">⬅</div>
+                    <div class="touch-btn" id="btn-right">➡</div>
+                </div>
+                <div class="control-group">
+                    <div class="touch-btn action-btn jump-btn" id="btn-jump">JUMP</div>
+                    <div class="touch-btn action-btn punch-btn" id="btn-punch">N</div>
+                    <div class="touch-btn action-btn kick-btn" id="btn-kick">M</div>
                 </div>
             </div>
         </div>
-
-        <div id="overlay-text">FIGHT!</div>
-        <div id="fatality-text">FATALITY</div>
-
-        <div id="controls-hint" style="display: none;">Move: A/D | Jump: Space | Punch: N | Kick: M | Fatality: N+M</div>
-        <div id="mute-btn" title="Mute/Unmute">🔊</div>
-        
-        <div id="mobile-controls" style="display: none;">
-            <div class="control-group">
-                <div class="touch-btn" id="btn-left">⬅</div>
-                <div class="touch-btn" id="btn-right">➡</div>
-            </div>
-            <div class="control-group">
-                <div class="touch-btn action-btn jump-btn" id="btn-jump">JUMP</div>
-                <div class="touch-btn action-btn punch-btn" id="btn-punch">N</div>
-                <div class="touch-btn action-btn kick-btn" id="btn-kick">M</div>
-            </div>
-        </div>
-
     </div>
 
 <script>
+// IIFE untuk Enkapsulasi Variabel (ANTI-CHEAT: Menyembunyikan variabel global)
+(function() {
+    // --- ANTI CHEAT: Prevent Context Menu & Shortcuts ---
+    document.addEventListener('contextmenu', event => event.preventDefault());
+    document.addEventListener('keydown', function(e) {
+        if(e.key == 'F12' || (e.ctrlKey && e.shiftKey && e.key == 'I')) {
+            e.preventDefault();
+        }
+    });
+
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
@@ -319,15 +373,10 @@
                 hit: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/hit.png', frames: 1 },
                 death: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/death.png', frames: 5, offset: {x:0, y: 80} },
                 
-                // STUN (Pusing)
                 stun: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/hero%20pusing.png', frames: 1 },
-
-                // FATALITY VICTIM
                 deathFatality: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/hit.png', frames: 1, hold: 60 },
                 deathBy_bonk: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/hero%20difatality%20bonk.png', frames: 4, offset: {x:0, y: 25}, hold: 60, loop: false },
                 deathBy_toly: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/hero%20difatality%20toly.png', frames: 4, offset: {x:0, y: 25}, hold: 60, loop: false },
-
-                // FATALITY ATTACK
                 fatality: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/hero%20fatality.png', frames: 4, offset: {x:0, y: 25}, hold: 50, loop: false },
                 
                 win: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/win.png', frames: 4, hold: 20 }
@@ -347,17 +396,11 @@
                 hit: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/enemy%20hit.png', frames: 2 },
                 death: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/enemy%20death.png', frames: 6 },
                 
-                // STUN (Pusing)
                 stun: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/punk%20pusing.png', frames: 1 },
-
-                // FATALITY VICTIM
                 deathFatality: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/enemy%20hit.png', frames: 2, hold: 60 },
                 deathBy_bonk: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/punk%20difatality%20bonk.png', frames: 4, offset: {x:0, y: 25}, hold: 60, loop: false },
                 deathBy_toly: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/punk%20difatality%20toly.png', frames: 4, offset: {x:0, y: 25}, hold: 60, loop: false },
-
-                // FATALITY ATTACK
                 fatality: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/punk%20fatality.png', frames: 4, offset: {x: 0, y: 25}, hold: 50, loop: false },
-                
                 win: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/enemy%20win.png', frames: 5, hold: 20 }
             }
         },
@@ -376,17 +419,11 @@
                 hit: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/thit.png', frames: 2 },
                 death: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/tko.png', frames: 4, offset: {x: 0, y: 25}, hold: 60 }, 
                 
-                // STUN (Pusing)
                 stun: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/toly%20pusing.png', frames: 1 },
-
-                // FATALITY VICTIM
                 deathFatality: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/thit.png', frames: 2, hold: 60 },
                 deathBy_bonk: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/toly%20difatality%20bonk.png', frames: 4, offset: {x:0, y: 25}, hold: 60, loop: false },
                 deathBy_toly: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/toly%20difatality%20toly.png', frames: 4, offset: {x:0, y: 25}, hold: 60, loop: false },
-
-                // FATALITY ATTACK
                 fatality: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/toly%20fatality.png', frames: 4, offset: {x: 0, y: 25}, hold: 50, loop: false },
-                
                 win: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/twin.png', frames: 4, hold: 20 }
             }
         },
@@ -405,17 +442,11 @@
                 hit: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/bonk%20hit.png', frames: 2 },
                 death: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/bonk%20death.png', frames: 4, offset: {x: 0, y: 25}, hold: 60 },
                 
-                // STUN (Pusing)
                 stun: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/bonk%20pusing.png', frames: 1 },
-
-                // FATALITY VICTIM
                 deathFatality: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/bonk%20hit.png', frames: 2, hold: 60 },
                 deathBy_bonk: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/bonk%20difatality%20bonk.png', frames: 4, offset: {x:0, y: 25}, hold: 60, loop: false },
                 deathBy_toly: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/bonk%20difatality%20toly.png', frames: 4, offset: {x:0, y: 25}, hold: 60, loop: false },
-
-                // FATALITY ATTACK
                 fatality: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/bonk%20fatality.png', frames: 4, offset: {x: 0, y: 25}, hold: 50, loop: false },
-                
                 win: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/bonk%20win.png', frames: 4, hold: 20 },
                 start: { src: 'https://raw.githubusercontent.com/fauzanbunz/hummingbird/main/bonk%20start.png', frames: 4, hold: 50 }
             }
@@ -481,6 +512,12 @@
         if(id) document.getElementById(id).classList.add('active');
     }
 
+    // --- EVENT LISTENERS FOR BUTTONS (ANTI-CHEAT: JS Bound) ---
+    document.getElementById('btn-start').addEventListener('click', goToCharSelect);
+    document.getElementById('btn-fight').addEventListener('click', startMatch);
+    document.getElementById('btn-back').addEventListener('click', resetMenu);
+    document.getElementById('btn-restart').addEventListener('click', resetMenu);
+
     function generateGrid(containerId, data, onClickFn) {
         const container = document.getElementById(containerId);
         container.innerHTML = '';
@@ -488,9 +525,10 @@
             const card = document.createElement('div');
             card.className = 'card';
             let imgSrc;
-            if (val.sprites) {
-                // Check profile first
-                imgSrc = val.profile ? val.profile : (val.sprites.idle ? val.sprites.idle.src : val.sprites.start.src);
+            if (val.profile) {
+                imgSrc = val.profile;
+            } else if (val.sprites) {
+                imgSrc = val.sprites.idle ? val.sprites.idle.src : val.sprites.start.src;
             } else {
                 imgSrc = val.src;
             }
@@ -509,51 +547,59 @@
         if(AUDIO.music.paused) AUDIO.music.play().catch(e=>{});
         generateGrid('char-grid', CHARACTERS, (key) => playerSelection = key);
         showLayer('menu-char');
-        const btn = document.createElement('button');
-        btn.className = 'menu-btn';
-        btn.innerText = 'NEXT >>';
-        btn.onclick = goToEnemySelect;
-        document.getElementById('menu-char').appendChild(btn);
+        // Next buttons generated dynamically, simple logic
+        let btn = document.getElementById('char-next-btn');
+        if(!btn) {
+            btn = document.createElement('button');
+            btn.id = 'char-next-btn';
+            btn.className = 'menu-btn';
+            btn.innerText = 'NEXT >>';
+            btn.onclick = goToEnemySelect;
+            document.getElementById('menu-char').appendChild(btn);
+        }
     }
 
     function goToEnemySelect() {
         generateGrid('enemy-grid', CHARACTERS, (key) => enemySelection = key);
         showLayer('menu-enemy');
-        const btn = document.createElement('button');
-        btn.className = 'menu-btn';
-        btn.innerText = 'NEXT >>';
-        btn.onclick = goToStageSelect;
-        const oldBtns = document.getElementById('menu-enemy').querySelectorAll('button');
-        oldBtns.forEach(b => b.remove());
-        document.getElementById('menu-enemy').appendChild(btn);
+        let btn = document.getElementById('enemy-next-btn');
+        if(!btn) {
+            btn = document.createElement('button');
+            btn.id = 'enemy-next-btn';
+            btn.className = 'menu-btn';
+            btn.innerText = 'NEXT >>';
+            btn.onclick = goToStageSelect;
+            document.getElementById('menu-enemy').appendChild(btn);
+        }
     }
 
     function goToStageSelect() {
         generateGrid('stage-grid', STAGES, (key) => stageSelection = key);
         showLayer('menu-stage');
-        const btn = document.createElement('button');
-        btn.className = 'menu-btn';
-        btn.innerText = 'NEXT >>';
-        btn.onclick = () => showLayer('menu-confirm');
-        const oldBtns = document.getElementById('menu-stage').querySelectorAll('button');
-        oldBtns.forEach(b => b.remove());
-        document.getElementById('menu-stage').appendChild(btn);
+        let btn = document.getElementById('stage-next-btn');
+        if(!btn) {
+            btn = document.createElement('button');
+            btn.id = 'stage-next-btn';
+            btn.className = 'menu-btn';
+            btn.innerText = 'NEXT >>';
+            btn.onclick = () => showLayer('menu-confirm');
+            document.getElementById('menu-stage').appendChild(btn);
+        }
     }
 
     function resetMenu() {
-        // Reset full game state
         gameState = 'MENU';
         playerWins = 0;
         enemyWins = 0;
         currentRound = 1;
         updateWinIndicators();
-        // Hide overlays
+        
         document.getElementById('overlay-text').style.display = 'none';
         document.getElementById('fatality-text').style.display = 'none';
+        document.getElementById('game-over-screen').style.display = 'none'; // Hide static game over
         
         showLayer('menu-main');
         
-        // Restore BGM and ensure Fatality theme is stopped
         AUDIO.fatalityTheme.pause();
         AUDIO.fatalityTheme.currentTime = 0;
         if(!AUDIO.music.muted) AUDIO.music.play().catch(e=>{});
@@ -569,7 +615,10 @@
         document.getElementById('hud-layer').style.display = 'flex';
         document.getElementById('controls-hint').style.display = 'block';
         document.getElementById('mobile-controls').style.display = 'flex';
+        resizeGame(); 
         startBattleSequence();
+        
+        if(!AUDIO.music.muted) AUDIO.music.play().catch(e=>{});
     }
 
     function startBattleSequence() {
@@ -581,15 +630,11 @@
         finishHimActive = false; 
         fatalityPerformed = false; 
         
-        // Stop Fatality Theme (Add this)
-        AUDIO.fatalityTheme.pause();
-        AUDIO.fatalityTheme.currentTime = 0;
-
-        // Reset Timer
         timer = 60;
         document.getElementById('timer').innerHTML = timer;
         document.getElementById('fatality-text').style.display = 'none'; 
         document.getElementById('overlay-text').style.display = 'none';
+        document.getElementById('game-over-screen').style.display = 'none';
 
         document.querySelector('#player-health').style.width = '100%';
         document.querySelector('#enemy-health').style.width = '100%';
@@ -597,7 +642,6 @@
         player.position.x = 200;
         enemy.position.x = 800;
 
-        // FORCE RESET ANIMATION STATE
         player.image = player.sprites.idle.image;
         player.framesCurrent = 0;
         player.isAttacking = false;
@@ -620,7 +664,6 @@
 
         playSound(AUDIO.readyFight);
         
-        // Resume BGM
         if (!AUDIO.music.muted) AUDIO.music.play().catch(e=>{});
 
         gameState = 'PRE_FIGHT';
@@ -889,7 +932,7 @@
                  if (this.image !== this.sprites.stun.image) {
                     this.image = this.sprites.stun.image;
                     this.framesMax = this.sprites.stun.framesMax;
-                    this.framesHold = 60; // Keep it slow/static
+                    this.framesHold = 60; 
                     this.frameDims = this.sprites.stun.frameDims || this.defaultDims;
                     this.offset = this.sprites.stun.offset || this.currentOffset;
                     this.loop = true; 
@@ -1099,12 +1142,12 @@
              let msg = (playerWins >= 2) ? "YOU WIN THE MATCH!" : "YOU LOSE";
              if(playerWins === 2 && enemyWins === 2) msg = "DRAW GAME"; 
 
-             // Delay showing WIN/LOSE text if fatality happens so it doesn't overlap
              let delay = fatalityPerformed ? 2000 : 1000;
              setTimeout(() => {
-                 overlay.style.display = 'block';
-                 overlay.innerHTML = `${msg}<br><button class="menu-btn" onclick="resetMenu()">BACK TO MAIN MENU</button>`;
-                 gameState = 'GAMEOVER'; 
+                // Show static Game Over screen
+                document.getElementById('game-over-screen').style.display = 'flex';
+                document.getElementById('game-over-title').innerText = msg;
+                gameState = 'GAMEOVER'; 
              }, delay);
 
         } else {
@@ -1128,7 +1171,7 @@
         overlay.innerText = "FINISH HIM!";
         overlay.style.color = "red";
         overlay.style.fontSize = "80px";
-        playSound(AUDIO.finishHim); // Play Finish Him Sound
+        playSound(AUDIO.finishHim); 
         clearTimeout(timerId);
         
         if (player.health <= 0) player.switchSprite('stun');
@@ -1145,33 +1188,28 @@
         clearTimeout(finishHimTimer);
         fatalityPerformed = true; 
 
-        // Stop BGM
         AUDIO.music.pause();
         AUDIO.music.currentTime = 0;
 
-        // Play Fatality Theme
-        // playSound(AUDIO.fatalityTheme); // CHANGE THIS
         if (!AUDIO.music.muted) {
              AUDIO.fatalityTheme.currentTime = 0;
              AUDIO.fatalityTheme.volume = 0.8;
              AUDIO.fatalityTheme.play().catch(e=>{});
         }
 
-        // Hide overlay text like FINISH HIM
         document.getElementById('overlay-text').style.display = 'none';
 
         document.getElementById('fatality-text').style.display = 'block';
         // Red flash handled in animate loop via fillRect overlay
         // Trigger red flash effect for short duration
-        // We can just use CSS here briefly
         document.body.style.backgroundColor = 'red'; 
-        setTimeout(() => document.body.style.backgroundColor = '#111', 100);
+        setTimeout(() => document.body.style.backgroundColor = '#050505', 100);
         
         loser.switchSprite('deathBy_' + winner.id); 
         loser.dead = true;
         winner.switchSprite('fatality'); 
 
-        // playSound(AUDIO.ko); // KO sound might clash with fatality theme, maybe remove or keep
+        // playSound(AUDIO.ko); // KO sound might clash with fatality theme
 
         setTimeout(() => {
             determineWinner({ player, enemy, timerId }); 
@@ -1422,6 +1460,7 @@
 
     showLayer('menu-main');
 
+})(); // END IIFE
 </script>
 </body>
 </html>
