@@ -14,8 +14,7 @@
       "type": "image/png",
       "purpose": "any maskable"
     }
-  ]
-}
+  ],
   "screenshots": [
     {
       "src": "shot1.png",
@@ -30,3 +29,4 @@
       "form_factor": "wide"
     }
   ]
+}
